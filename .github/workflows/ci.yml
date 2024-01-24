@@ -35,7 +35,7 @@ jobs:
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_INSTALL_DIR=../install
+          cmake .. -DCMAKE_INSTALL_PREFIX=../install
       - name: Build
         run: |
           cd build
@@ -44,9 +44,9 @@ jobs:
         run: |
           cd build
           make install
-      - name: Run
+      - name: Run test
         run: |
-          install/bin/smesh
+          install/bin/test_smesh
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session for debugging
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && always() }}

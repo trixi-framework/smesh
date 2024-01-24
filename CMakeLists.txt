@@ -17,8 +17,20 @@ project(smesh
         VERSION ${SMESH_VERSION_MAJOR}.${SMESH_VERSION_MINOR}.${SMESH_VERSION_PATCH}
         LANGUAGES Fortran)
 
-add_executable(smesh
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+add_library(smesh SHARED
   ${CMAKE_SOURCE_DIR}/src/smesh.f90
 )
 
-install(TARGETS ${PROJECT_NAME})
+add_library(input_output SHARED
+  ${CMAKE_SOURCE_DIR}/src/input_output.f90
+)
+
+add_executable(test_smesh
+  ${CMAKE_SOURCE_DIR}/src/test_smesh.f90
+)
+target_link_libraries(test_smesh PRIVATE smesh input_output)
+
+install(TARGETS smesh input_output test_smesh)
