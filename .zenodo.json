@@ -1,0 +1,14 @@
+{
+    "title": "smesh",
+    "description": "tbd.",
+    "license": "MIT",
+    "upload_type": "software",
+    "creators": [
+        {
+            "affiliation": "University of Cologne, Germany",
+            "name": "Chiocchetti, Simone",
+            "orcid": "0000-0001-7394-5708"
+        }
+    ],
+    "access_right": "open"
+}
