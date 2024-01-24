@@ -1412,7 +1412,7 @@ CONTAINS
             mesh_type_selector = 0
         END IF
         IF (mesh_type_selector .eq. 0) THEN
-            ! standard voronoi, use centroid if the circumcenter lies outside the triangle
+            ! standard voronoi, but use centroid if the circumcenter lies outside the triangle
             DO j = 1, nelem
                 p1 = pt(:,ve(1,j))
                 p2 = pt(:,ve(2,j))
