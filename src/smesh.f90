@@ -131,7 +131,7 @@ CONTAINS
         !     some degree of spatial organization, apparently not shuffling them leads to
         !     very short search times when starting the search at the last inserted triangle, 
         !     while shuffling renders very few edge flips necessary in orger to 
-        !     mantain the delaunay property. 
+        !     maintain the delaunay property. 
 
         IF (present(shuffle)) THEN
             IF (shuffle) THEN
@@ -268,7 +268,7 @@ CONTAINS
                         pt(:,ve(2,j)), pt(:,ve(3,j)), triangle_inside)
                     IF (triangle_inside) THEN
                         ! The point has been located inside the triangle j
-                        ! Save the informations about the old triangle j and build k1 and k2
+                        ! Save the information about the old triangle j and build k1 and k2
                         k1 = k + 1
                         k2 = k + 2
                         ! WRITE(*,"(A, I6, A, I6, A, I6, A, I6, A, I6)") "Point ", i, &
@@ -322,7 +322,7 @@ CONTAINS
                         bc(:, j) = sum(pt(:,ve(:, j)),2)*oot
                         bc(:,k1) = sum(pt(:,ve(:,k1)),2)*oot
                         bc(:,k2) = sum(pt(:,ve(:,k2)),2)*oot
-                        k = k2 ! 3 triangles added - 1 deletd
+                        k = k2 ! 3 triangles added - 1 deleted
                     END IF
                 END IF
                 IF (triangle_inside .or. triangle_edge) THEN
@@ -794,7 +794,7 @@ CONTAINS
 
     PURE SUBROUTINE onedge(p, v1, v2, v3, edge, ii)
         ! Tests if p lies on an edge of triangle (v1, v2, v3).
-        !     Returns the index of the edge yelding maximum collinearity
+        !     Returns the index of the edge yielding maximum collinearity
         REAL(8), DIMENSION(2), INTENT(IN)  :: p, v1, v2, v3
         LOGICAL,               INTENT(OUT) :: edge
         INTEGER,               INTENT(OUT) :: ii
@@ -995,7 +995,7 @@ CONTAINS
         obtuse = sum((pe1 - po)*(pe2 - po)) .lt. 0.0d0
         ! in doubt we might say that pi/2 and slightly less is still
         ! obtuse and generate one more node, for robustness
-        ! but maybe we introduce instability on boundig box borders?
+        ! but maybe we introduce instability on bounding box borders?
     END FUNCTION obtuse
 
     PURE FUNCTION acute(po, pe1, pe2)
@@ -1004,7 +1004,7 @@ CONTAINS
         acute = sum((pe1 - po)*(pe2 - po)) .gt. 0.0d0 
         ! in doubt we might say that pi/2 and slightly less is still
         ! obtuse and generate one more node, for robustness
-        ! but maybe we introduce instability on boundig box borders?
+        ! but maybe we introduce instability on bounding box borders?
     END FUNCTION acute
 
     PURE FUNCTION near_obtuse(po, pe1, pe2, cosmin)
