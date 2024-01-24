@@ -1,4 +1,8 @@
 # smesh
+
+[![Build Status](https://github.com/trixi-framework/smesh/workflows/CI/badge.svg)](https://github.com/trixi-framework/smesh/actions?query=workflow%3ACI)
+[![License: MIT](https://img.shields.io/badge/License-MIT-success.svg)](https://opensource.org/license/mit/)
+
 Simple mesh generation tools
 
 
