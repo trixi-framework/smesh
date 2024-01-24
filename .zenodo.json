@@ -1,6 +1,6 @@
 {
     "title": "smesh",
-    "description": "tbd.",
+    "description": "A simple package for generating and handling unstructured triangular and polygonal meshes, written in Fortran with Julia wrappers.",
     "license": "MIT",
     "upload_type": "software",
     "creators": [
