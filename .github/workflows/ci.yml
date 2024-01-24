@@ -47,7 +47,7 @@ jobs:
           make install
       - name: Run test
         run: |
-          install/bin/test_smesh
+          install/bin/smesh_test
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session for debugging
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && always() }}
