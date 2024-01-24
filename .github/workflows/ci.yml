@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'AUTHORS.md'
+      - 'LICENSE.md'
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'AUTHORS.md'
+      - 'LICENSE.md'
+      - 'README.md'
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
+
+jobs:
+  test:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    name: ${{ matrix.os_name }} - ${{ matrix.compiler }} -- ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        - os: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_DIR=../install
+      - name: Build
+        run: |
+          cd build
+          make -j 2
+      - name: Install
+        run: |
+          cd build
+          make install
+      - name: Run
+        run: |
+          install/bin/smesh
+      # Enable tmate debugging of manually-triggered workflows if the input option was provided
+      - name: Setup tmate session for debugging
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && always() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
