@@ -61,11 +61,11 @@ jobs:
       - name: Build
         run: |
           cd build
-          make -j 2
+          cmake --build .
       - name: Install
         run: |
           cd build
-          make install
+          cmake --install .
       - name: Run test
         run: |
           install/bin/smesh_test
