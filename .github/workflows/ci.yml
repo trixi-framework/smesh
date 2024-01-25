@@ -23,28 +23,49 @@ on:
 jobs:
   test:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
-    name: ${{ matrix.os }} - ${{ github.event_name }}
+    name: ${{ matrix.os }} - ${{ matrix.compiler }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
           - ubuntu-latest
+          - macos-latest
+        compiler:
+          - gfortran-11
+          - gfortran-13
+        shell:
+          - bash
+        include:
+          - os: windows-latest
+            compiler: gfortran
+            shell: 'msys2 {0}'
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          update: true
+          install: git base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
+      - name: Show compiler version information
+        run: |
+          ${{ matrix.compiler }} --version
       - name: Configure
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_INSTALL_PREFIX=../install
+          FC=${{ matrix.compiler }} cmake .. -DCMAKE_INSTALL_PREFIX=../install
       - name: Build
         run: |
           cd build
-          make -j 2
+          cmake --build .
       - name: Install
         run: |
           cd build
-          make install
+          cmake --install .
       - name: Run test
         run: |
           install/bin/smesh_test
