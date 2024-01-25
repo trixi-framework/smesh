@@ -24,13 +24,13 @@ add_library(smesh SHARED
   ${CMAKE_SOURCE_DIR}/src/smesh.f90
 )
 
-add_library(input_output SHARED
-  ${CMAKE_SOURCE_DIR}/src/input_output.f90
+add_library(smesh_io SHARED
+  ${CMAKE_SOURCE_DIR}/src/smesh_io.f90
 )
 
-add_executable(test_smesh
-  ${CMAKE_SOURCE_DIR}/src/test_smesh.f90
+add_executable(smesh_test
+  ${CMAKE_SOURCE_DIR}/src/smesh_test.f90
 )
-target_link_libraries(test_smesh PRIVATE smesh input_output)
+target_link_libraries(smesh_test PRIVATE smesh smesh_io)
 
-install(TARGETS smesh input_output test_smesh)
+install(TARGETS smesh smesh_io smesh_test)

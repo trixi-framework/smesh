@@ -1,6 +1,6 @@
-PROGRAM test_smesh
+PROGRAM smesh_test
 
-    USE input_output
+    USE smesh_io
     USE smesh
 
     IMPLICIT NONE
@@ -22,7 +22,7 @@ PROGRAM test_smesh
 
 ! --- Read settings from a text file ---
     
-    OPEN(unit=21, file="test_smesh.cfg", status="old", access="sequential", action="read")
+    OPEN(unit=21, file="smesh_test.cfg", status="old", access="sequential", action="read")
     READ(21,*) ! input data
     READ(21,*) problem_type
     READ(21,*) filename_points
@@ -226,7 +226,7 @@ CONTAINS
 !             k += 1
 !     return points
 
-END PROGRAM test_smesh
+END PROGRAM smesh_test
 
 
 
