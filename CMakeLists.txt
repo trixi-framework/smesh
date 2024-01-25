@@ -29,8 +29,8 @@ add_library(smesh_io SHARED
 )
 
 add_executable(smesh_test
-  ${CMAKE_SOURCE_DIR}/src/smesh_test.f90
+  ${CMAKE_SOURCE_DIR}/src/smesh_run.f90
 )
 target_link_libraries(smesh_test PRIVATE smesh smesh_io)
 
-install(TARGETS smesh smesh_io smesh_test)
+install(TARGETS smesh smesh_io smesh_run)
