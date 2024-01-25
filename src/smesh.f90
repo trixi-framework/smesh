@@ -44,6 +44,16 @@ CONTAINS
 
     ! ---- The delaunay triangulation routine ---------------------------------------------------- !
 
+
+    PURE SUBROUTINE delaunay_triangulation_compute_scratch_size(npmax, ntmax, nemax, npoints)
+        INTEGER, INTENT(OuT) :: npmax, ntmax, nemax
+        INTEGER, INTENT(IN)  :: npoints
+        ! Estimate the dimensions of the dataset
+        npmax = 4 + npoints ! The number of points provided plus a bounding triangle
+        ntmax = 2*npmax - 2 - 4 ! We expect ntmax = 2*npmax - 2 - npmax_convex_hull
+        nemax = 3*npmax - 3 - 4 ! We expect nemax = 3*npmax - 3 - npmax_convex_hull
+    END SUBROUTINE delaunay_triangulation_compute_scratch_size
+
     SUBROUTINE build_delaunay_triangulation(ve_out, data_points, shuffle, verbose)
         ! Please do not input overlapping points. 
         !     You can use duplicate_cleanup to remove the duplicates beforehand
@@ -78,6 +88,7 @@ CONTAINS
         REAL(8), PARAMETER                                :: search_sample_size_scale    = 2.0d0
         INTEGER                                           :: search_sample_size
         REAL(8)                                           :: search_sample_step
+        INTEGER :: npoints
 
         IF (present(verbose)) THEN
             be_verbose = verbose
@@ -86,12 +97,10 @@ CONTAINS
         END IF
 
         j2 = 0
-
-        ! Estimate the dimensions of the dataset
-        npmax = 4 + size(data_points,2) ! The number of points provided plus a bounding triangle
-        ntmax = 2*npmax - 2 - 4 ! We expect ntmax = 2*npmax - 2 - npmax_convex_hull
-        nemax = 3*npmax - 3 - 4 ! We expect nemax = 3*npmax - 3 - npmax_convex_hull
         
+        npoints = size(data_points,2)
+        CALL  delaunay_triangulation_compute_scratch_size(npmax, ntmax, nemax, npoints)
+
         ! allocate sampling arrays for point location
         search_sample_size = min(ceiling(search_sample_size_scale*real(ntmax, 8)**search_sample_size_exponent), ntmax)
         ALLOCATE(search_sample_point_distance(search_sample_size + 1))

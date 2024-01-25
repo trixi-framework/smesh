@@ -1,4 +1,4 @@
-PROGRAM smesh_test
+PROGRAM smesh_run
 
     USE smesh_io
     USE smesh
@@ -19,10 +19,15 @@ PROGRAM smesh_test
     REAL(8), DIMENSION(:,:), ALLOCATABLE :: vor_pt
     INTEGER, DIMENSION(:),   ALLOCATABLE :: vor_ve
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: vor_veb
+    CHARACTER(len=200) :: filename_config, output_path
+    LOGICAL :: using_default_config_file
 
-! --- Read settings from a text file ---
-    
-    OPEN(unit=21, file="smesh_test.cfg", status="old", access="sequential", action="read")
+    CALL parse_command_line(filename_config, using_default_config_file)
+
+    ! --- Read settings from a text file ---
+    OPEN(unit=21, file=trim(filename_config), status="old", access="sequential", action="read")
+    READ(21,*) ! output path
+    READ(21,*) output_path
     READ(21,*) ! input data
     READ(21,*) problem_type
     READ(21,*) filename_points
@@ -76,14 +81,32 @@ PROGRAM smesh_test
     CALL build_voronoi_control_volumes(vor_pt, vor_ve, vor_veb, pt, ve, ne, &
         mesh_type=voronoi_mesh_type)
 
-    CALL prt_bin(pt,      "./output_data/dt_pt.dat")
-    CALL prt_bin(ve,      "./output_data/dt_ve.dat")
-    CALL prt_bin(edge,    "./output_data/dt_edge.dat")
-    CALL prt_bin(vor_pt,  "./output_data/dt_vor_pt.dat")
-    CALL prt_bin(vor_ve,  "./output_data/dt_vor_ve.dat")
-    CALL prt_bin(vor_veb, "./output_data/dt_vor_veb.dat")
+    CALL prt_bin(pt,      trim(output_path)//"/dt_pt.dat")
+    CALL prt_bin(ve,      trim(output_path)//"/dt_ve.dat")
+    CALL prt_bin(edge,    trim(output_path)//"/dt_edge.dat")
+    CALL prt_bin(vor_pt,  trim(output_path)//"/dt_vor_pt.dat")
+    CALL prt_bin(vor_ve,  trim(output_path)//"/dt_vor_ve.dat")
+    CALL prt_bin(vor_veb, trim(output_path)//"/dt_vor_veb.dat")
     
 CONTAINS
+
+    SUBROUTINE parse_command_line(filename_config, using_default_config_file)
+        CHARACTER(LEN=*), INTENT(OUT) :: filename_config
+        LOGICAL,          INTENT(OUT) :: using_default_config_file
+        INTEGER                       :: n_arg     
+        n_arg = COMMAND_ARGUMENT_COUNT()
+        using_default_config_file = .false.
+        IF (n_arg .eq. 0) THEN
+            WRITE(*,"(A)") "Using default config file smesh_test.cfg" 
+            filename_config = "smesh_test.cfg"
+            using_default_config_file = .true.
+        ELSE IF (n_arg .eq. 1) THEN
+            CALL get_command_argument(1, filename_config) 
+        ELSE
+            write(*,"(A)") "ERROR, syntax error in command line"
+            STOP
+        END IF
+    END SUBROUTINE parse_command_line
 
     SUBROUTINE mesh_basic(points, xmin, xmax, ymin, ymax, nx, ny)
         REAL(8),                              INTENT(IN)  :: xmin, xmax, ymin, ymax
@@ -226,7 +249,7 @@ CONTAINS
 !             k += 1
 !     return points
 
-END PROGRAM smesh_test
+END PROGRAM smesh_run
 
 
 
