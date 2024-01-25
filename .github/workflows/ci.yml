@@ -50,7 +50,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         with:
           update: true
-          install: git base-devel mingw-w64-x86_64-toolchain
+          install: git base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
       - name: Show compiler version information
         run: |
           ${{ matrix.compiler }} --version
