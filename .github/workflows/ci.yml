@@ -32,8 +32,8 @@ jobs:
           - ubuntu-latest
           - macos-latest
         compiler:
-          - gfortran-10
-          - gfortran-12
+          - gfortran-11
+          - gfortran-13
         shell:
           - bash
         include:
