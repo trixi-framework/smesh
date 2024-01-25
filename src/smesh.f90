@@ -13,7 +13,7 @@
 
 MODULE smesh
 
-    ! USE input_output, only: prt_bin, prt
+    ! USE smesh_io, only: prt_bin, prt
 
     IMPLICIT NONE
 

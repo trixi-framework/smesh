@@ -1,4 +1,4 @@
-MODULE input_output
+MODULE smesh_io
 
     IMPLICIT NONE
 
@@ -515,7 +515,7 @@ CONTAINS
     END SUBROUTINE load_binary_matrix3_integer
 
 
-END MODULE input_output
+END MODULE smesh_io
 
 ! for reading binary files in python
     ! def load_fortran_binary(filename):
