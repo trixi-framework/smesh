@@ -13,22 +13,26 @@
 
 MODULE smesh
 
-    ! USE smesh_io, only: prt_bin, prt
+    use, intrinsic :: iso_c_binding, only: c_double, c_int
 
     IMPLICIT NONE
 
     PRIVATE
 
     ! correct calling convention CALL subroutine_name(outputs, inputs)
+    PUBLIC :: delaunay_triangulation_temparray_size_c
+    PUBLIC :: build_delaunay_triangulation_c
+    PUBLIC :: delaunay_compute_neighbors_c
+    !
     PUBLIC :: build_delaunay_triangulation
     PUBLIC :: duplicate_cleanup
-    PUBLIC :: build_voronoi_control_volumes
+    PUBLIC :: build_polygon_mesh
     PUBLIC :: physical_space_to_reference_space_build_map
     PUBLIC :: physical_space_to_reference_space
     PUBLIC :: reference_space_to_physical_space
-    PUBLIC :: compute_neighbors_delaunay
+    PUBLIC :: delaunay_compute_neighbors
     PUBLIC :: sort_dual_grid
-    PUBLIC :: compute_dual_grid
+    PUBLIC :: delaunay_compute_dual_grid
     PUBLIC :: compute_unique_edges
     PUBLIC :: compute_unique_edges_voronoi
 
@@ -42,8 +46,92 @@ MODULE smesh
 
 CONTAINS
 
+    PURE FUNCTION delaunay_triangulation_temparray_size_c(npoints) bind(c)
+        use, intrinsic :: iso_c_binding, only: c_double, c_int
+        INTEGER(c_int), VALUE, INTENT(IN) :: npoints
+        INTEGER(c_int)                    :: delaunay_triangulation_temparray_size_c
+        delaunay_triangulation_temparray_size_c = delaunay_triangulation_temparray_size(npoints)
+    END FUNCTION delaunay_triangulation_temparray_size_c
+
+    FUNCTION build_delaunay_triangulation_c(ve_out, data_points, npoints, ve_max, shuffle, verbose) bind(c)
+        ! returns the size of the vertices array for each triangle
+        use, intrinsic :: iso_c_binding, only: c_double, c_int
+        INTEGER(c_int), VALUE,                 INTENT(IN)    :: npoints, ve_max
+        REAL(c_double), DIMENSION(2, npoints), INTENT(IN)    :: data_points
+        INTEGER(c_int), DIMENSION(3, ve_max),  INTENT(INOUT) :: ve_out
+        INTEGER(c_int), VALUE,                 INTENT(IN)    :: shuffle
+        INTEGER(c_int), VALUE,                 INTENT(IN)    :: verbose
+        INTEGER, DIMENSION(:,:), ALLOCATABLE                 :: ve_internal
+        INTEGER                                              :: i, j
+        LOGICAL :: shuffle_internal, verbose_internal
+        INTEGER(c_int) :: build_delaunay_triangulation_c
+        shuffle_internal = shuffle .ne. 0
+        verbose_internal = verbose .ne. 0
+        ! Call Fortran subroutine with appropriate arguments
+        call build_delaunay_triangulation(ve_internal, data_points, shuffle_internal, verbose_internal)
+        ! Copy data to pre-alloacted array
+        DO j = 1, size(ve_internal, 2)
+            DO i = 1, 3
+                ve_out(i, j) = ve_internal(i, j)
+            END DO
+        END DO
+        ! Return number of triangles
+        build_delaunay_triangulation_c = size(ve_internal, 2)
+    END FUNCTION build_delaunay_triangulation_c
+
+    FUNCTION delaunay_compute_neighbors_c(ne, ve, nelem, nnode)
+        ! an interface that merges the dual graph computation and the neighbor computation
+        INTEGER(c_int), VALUE, INTENT(IN) :: nelem, nnode
+        INTEGER(c_int), DIMENSION(3,nelem),  INTENT(OUT) :: ne
+        INTEGER(c_int), DIMENSION(3,nelem),  INTENT(IN)  :: ve
+        INTEGER, DIMENSION(:),   ALLOCATABLE :: dual
+        INTEGER, DIMENSION(:,:), ALLOCATABLE :: dualb
+        INTEGER, DIMENSION(:,:), ALLOCATABLE :: ne_internal
+        INTEGER(c_int)                                   :: delaunay_compute_neighbors_c
+        INTEGER :: i, j
+        CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
+        CALL delaunay_compute_neighbors(ne_internal, ve, dual, dualb)
+        do j = 1, nelem
+            do i = 1, 3
+                ne(i,j) = ne_internal(i,j)
+            end do
+        end do
+        delaunay_compute_neighbors_c = 0
+    END FUNCTION delaunay_compute_neighbors_c
+
+    ! PURE FUNCTION build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
+    !     ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
+    !     REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
+    !     INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
+    !     INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_veb ! 2, nelem_voronoi==nnode
+    !     REAL(8), DIMENSION(:,:),              INTENT(IN)  :: pt
+    !     INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
+    !     INTEGER, OPTIONAL,                    INTENT(IN)  :: mesh_type
+    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
+    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: add_edge_midpoint
+    !     INTEGER, DIMENSION(:),   ALLOCATABLE              :: add_vertex
+    !     INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
+    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: dualb
+    !     INTEGER                                           :: nelem, nnode, nnode_voronoi, nelem_voronoi
+    !     INTEGER                                           :: i, j, ii, jj, kk, n, jl, jr, jn
+    !     REAL(8), DIMENSION(2)                             :: p1, p2, p3
+    !     REAL(8), PARAMETER                                :: oot = 1.0d0/3.0d0
+    !     LOGICAL                                           :: inside, add_this_vertex
+    !     INTEGER                                           :: mesh_type_selector
+    !     INTEGER, PARAMETER, DIMENSION(2,3)                :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
+
+    !     CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
+    ! END FUNCTION build_polygon_mesh_c
+
     ! ---- The delaunay triangulation routine ---------------------------------------------------- !
 
+    PURE FUNCTION delaunay_triangulation_temparray_size(npoints)
+        INTEGER, INTENT(IN) :: npoints
+        INTEGER             :: npmax, ntmax, nemax
+        INTEGER             :: delaunay_triangulation_temparray_size
+        CALL delaunay_triangulation_compute_scratch_size(npmax, ntmax, nemax, npoints)
+        delaunay_triangulation_temparray_size = ntmax
+    END FUNCTION delaunay_triangulation_temparray_size
 
     PURE SUBROUTINE delaunay_triangulation_compute_scratch_size(npmax, ntmax, nemax, npoints)
         INTEGER, INTENT(OuT) :: npmax, ntmax, nemax
@@ -458,7 +546,7 @@ CONTAINS
         IF (be_verbose) THEN
             ! WRITE(*,"(A, I0, A, I0, A, I0)") "Delaunay triangulation: npmax ", npmax, &
             !     ", ntmax ", ntmax, ", nemax ", nemax
-            WRITE(*,"(A, I10)") "Triangulation elements: ", k_out
+            WRITE(*,"(A, I10)") "Triangulation elements: ", size(ve_out, 2)
             WRITE(*,"(A, I10)") "Total flipped edges:    ", count_flips
             WRITE(*,"(A, F12.2)") "Average search time:  ", REAL(sum(search_steps),8)/REAL(npmax-4,8)
             WRITE(*,"(A, F12.2)") "Flips/triangle:       ", REAL(count_flips,8)/REAL(k_out,8)
@@ -1041,7 +1129,7 @@ CONTAINS
 
     ! ---- Linear time operations on the entire mesh --------------------------------------------- !
 
-    PURE SUBROUTINE compute_dual_grid(dual, dualb, ve, nnode)
+    PURE SUBROUTINE delaunay_compute_dual_grid(dual, dualb, ve, nnode)
         INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: dual
         INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: dualb 
         INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
@@ -1078,7 +1166,7 @@ CONTAINS
                 dual(dualb(2,i)) = j
             END DO
         END DO
-    END SUBROUTINE compute_dual_grid
+    END SUBROUTINE delaunay_compute_dual_grid
 
     PURE SUBROUTINE sort_dual_grid(dual, dualb, ve, ne)
         ! Sorts the vertices of the dual grid dual(dualb(1,i),dualb(2,i)) in counter-clockwise order
@@ -1165,7 +1253,7 @@ CONTAINS
         END DO
     END SUBROUTINE sort_dual_grid
 
-    PURE SUBROUTINE compute_neighbors_delaunay(ne, ve, dual, dualb)
+    PURE SUBROUTINE delaunay_compute_neighbors(ne, ve, dual, dualb)
         INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: ne
         INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
         INTEGER, DIMENSION(:),                INTENT(IN)  :: dual
@@ -1202,7 +1290,7 @@ CONTAINS
                 END DO
             END DO
         END DO
-    END SUBROUTINE compute_neighbors_delaunay
+    END SUBROUTINE delaunay_compute_neighbors
 
     PURE SUBROUTINE compute_unique_edges(edge, ve, ne)
         INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
@@ -1341,15 +1429,15 @@ CONTAINS
         projection_on_segment = p2 + (sum(u0*u1)/sum(u1**2))*u1
     END FUNCTION projection_on_segment
 
-    PURE SUBROUTINE build_voronoi_control_volumes(vor_pt, vor_ve, vor_veb, pt, ve, ne, mesh_type)
+    PURE SUBROUTINE build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
         ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
-        REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt
-        INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve
-        INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_veb
+        REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
+        INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
+        INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_veb ! 2, nelem_voronoi==nnode
         REAL(8), DIMENSION(:,:),              INTENT(IN)  :: pt
         INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
-        INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ne
         INTEGER, OPTIONAL,                    INTENT(IN)  :: mesh_type
+        INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
         INTEGER, DIMENSION(:,:), ALLOCATABLE              :: add_edge_midpoint
         INTEGER, DIMENSION(:),   ALLOCATABLE              :: add_vertex
         INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
@@ -1364,7 +1452,8 @@ CONTAINS
 
         nelem = size(ve, 2)
         nnode = size(pt, 2)
-        CALL compute_dual_grid(dual, dualb, ve, nnode)
+        CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
+        CALL delaunay_compute_neighbors(ne, ve, dual, dualb)
         CALL sort_dual_grid(dual, dualb, ve, ne) 
         nelem_voronoi = nnode
         IF (ALLOCATED(vor_veb)) DEALLOCATE(vor_veb)
@@ -1525,7 +1614,7 @@ CONTAINS
             END IF
         END DO
         DEALLOCATE(add_edge_midpoint, add_vertex)
-    END SUBROUTINE build_voronoi_control_volumes
+    END SUBROUTINE build_polygon_mesh
 
     ! ---- forward and back maps: reference space and physical space
 
