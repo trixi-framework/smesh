@@ -74,13 +74,11 @@ PROGRAM smesh_run
     ! get the number of nodes
     nnode = size(pt,2)
     ! Compute memory distance between elements
-    CALL compute_dual_grid(dual, dualb, ve, nnode)
-    CALL compute_neighbors_delaunay(ne, ve, dual, dualb)
+    CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
+    CALL delaunay_compute_neighbors(ne, ve, dual, dualb)
     CALL compute_unique_edges(edge, ve, ne)
     ! Compute voronoi control volumes
-    CALL build_voronoi_control_volumes(vor_pt, vor_ve, vor_veb, pt, ve, ne, &
-        mesh_type=voronoi_mesh_type)
-
+    CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type=voronoi_mesh_type)
     CALL prt_bin(pt,      trim(output_path)//"/dt_pt.dat")
     CALL prt_bin(ve,      trim(output_path)//"/dt_ve.dat")
     CALL prt_bin(edge,    trim(output_path)//"/dt_edge.dat")
