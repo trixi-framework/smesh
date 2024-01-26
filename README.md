@@ -1,6 +1,8 @@
 # smesh
 
 [![Build Status](https://github.com/trixi-framework/smesh/workflows/CI/badge.svg)](https://github.com/trixi-framework/smesh/actions?query=workflow%3ACI)
+[![Coveralls](https://coveralls.io/repos/github/trixi-framework/smesh/badge.svg)](https://coveralls.io/github/trixi-framework/smesh)
+[![Codecov](https://codecov.io/gh/trixi-framework/smesh/branch/main/graph/badge.svg)](https://codecov.io/gh/trixi-framework/smesh)
 [![License: MIT](https://img.shields.io/badge/License-MIT-success.svg)](https://opensource.org/license/mit/)
 
 A simple Fortran package for generating and handling unstructured triangular and polygonal
