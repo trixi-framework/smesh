@@ -79,7 +79,7 @@ CONTAINS
         build_delaunay_triangulation_c = size(ve_internal, 2)
     END FUNCTION build_delaunay_triangulation_c
 
-    FUNCTION delaunay_compute_neighbors_c(ne, ve, nelem, nnode)
+    FUNCTION delaunay_compute_neighbors_c(ne, ve, nelem, nnode) bind(c)
         ! an interface that merges the dual graph computation and the neighbor computation
         INTEGER(c_int), VALUE, INTENT(IN) :: nelem, nnode
         INTEGER(c_int), DIMENSION(3,nelem),  INTENT(OUT) :: ne
