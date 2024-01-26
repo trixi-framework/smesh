@@ -23,7 +23,7 @@ on:
 jobs:
   test:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
-    name: ${{ matrix.os }} - ${{ matrix.compiler }} - ${{ github.event_name }}
+    name: ${{ matrix.os }} - ${{ matrix.compiler }} - ${{ matrix.test_type }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -36,10 +36,17 @@ jobs:
           - gfortran-13
         shell:
           - bash
+        test_type:
+          - regular
         include:
           - os: windows-latest
             compiler: gfortran
             shell: 'msys2 {0}'
+            test_type: regular
+          - os: ubuntu-latest
+            compiler: gfortran-13
+            shell: bash
+            test_type: coverage
     defaults:
       run:
         shell: ${{ matrix.shell }}
@@ -69,6 +76,34 @@ jobs:
       - name: Run test
         run: |
           install/bin/smesh_run
+          install/bin/smesh_run smesh_example.cfg
+          install/bin/smesh_run smesh_test.cfg
+      - name: Run tests for coverage
+        if: ${{ matrix.test_type == 'coverage' }}
+        run: |
+          sudo apt-get install -y lcov
+          mkdir build-coverage
+          cd build-coverage
+          cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON
+          cmake --build .
+          cd ..
+          cmake --build build-coverage/ --target reset-coverage
+          build-coverage/smesh_run
+          build-coverage/smesh_run smesh_example.cfg
+          build-coverage/smesh_run smesh_test.cfg
+          cmake --build build-coverage/ --target process-coverage
+      - uses: codecov/codecov-action@v3
+        if: ${{ matrix.test_type == 'coverage' }}
+        with:
+          files: ./build-coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+      - name: Coveralls
+        if: ${{ matrix.test_type == 'coverage' }}
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./build-coverage/lcov.info
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session for debugging
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug_enabled && always() }}

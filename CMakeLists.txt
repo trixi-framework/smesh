@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.5.1)
+cmake_minimum_required (VERSION 3.13.0)
 
 # Get project version from `VERSION` file
 file(READ "${CMAKE_SOURCE_DIR}/VERSION" version_file)
@@ -34,3 +34,21 @@ add_executable(smesh_run
 target_link_libraries(smesh_run PRIVATE smesh smesh_io)
 
 install(TARGETS smesh smesh_io smesh_run)
+
+# Handle code coverage generation
+option(WITH_COVERAGE "Generate code coverage" OFF)
+if (WITH_COVERAGE)
+    target_compile_options(smesh     PRIVATE -g --coverage -O0)
+    target_compile_options(smesh_io  PRIVATE -g --coverage -O0)
+    target_compile_options(smesh_run PRIVATE -g --coverage -O0)
+    target_link_options(smesh     PRIVATE --coverage)
+    target_link_options(smesh_io  PRIVATE --coverage)
+    target_link_options(smesh_run PRIVATE --coverage)
+
+    add_custom_target(reset-coverage
+      COMMAND lcov --directory . --zerocounters
+    )
+    add_custom_target(process-coverage
+      COMMAND lcov --directory . --capture --output-file lcov.info
+    )
+endif()
