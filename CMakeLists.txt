@@ -35,7 +35,7 @@ target_link_libraries(smesh_run PRIVATE smesh smesh_io)
 
 
 # Set appropriate compile flags
-# Note: Require Fortran 2018 standard due to use of C interoperability funcionality
+# Note: Require Fortran 2018 standard due to use of C interoperability functionality
 target_compile_options(smesh PUBLIC "-fPIC")
 target_compile_options(smesh_io PUBLIC "-fPIC")
 target_compile_options(smesh PRIVATE -Wall -Wextra -Werror -std=f2018)
