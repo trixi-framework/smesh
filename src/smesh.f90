@@ -1356,7 +1356,7 @@ CONTAINS
         INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT)  :: edge_elements
         INTEGER, DIMENSION(:,:), ALLOCATABLE  :: edge_elements_temp
         INTEGER                                           :: nelem, i, n1, j1, i1, nedge, k
-        INTEGER, PARAMETER, DIMENSION(2,3) :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
+        ! INTEGER, PARAMETER, DIMENSION(2,3) :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
         INTEGER, DIMENSION(2) :: edge1, edge2
         nelem = size(veb, 2)
         ALLOCATE(edge_found_marker(size(ve)))
