@@ -33,6 +33,15 @@ add_executable(smesh_run
 )
 target_link_libraries(smesh_run PRIVATE smesh smesh_io)
 
+
+# Set appropriate compile flags
+# Note: Require Fortran 2018 standard due to use of C interoperability functionality
+target_compile_options(smesh PUBLIC "-fPIC")
+target_compile_options(smesh_io PUBLIC "-fPIC")
+target_compile_options(smesh PRIVATE -Wall -Wextra -Werror -std=f2018)
+target_compile_options(smesh_io PRIVATE -Wall -Wextra -Werror -std=f2018)
+target_compile_options(smesh_run PRIVATE -Wall -Wextra -Werror -std=f2018)
+
 install(TARGETS smesh smesh_io smesh_run)
 
 # Handle code coverage generation
