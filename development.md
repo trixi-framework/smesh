@@ -39,7 +39,7 @@ To create a new release for smesh, perform the following steps:
 Among other uses, smesh is the backend for the Julia package
 [Smesh.jl](https://github.com/trixi-framework/Smesh.jl). For this purpose, it is
 automatically built and distributed as a Julia JLL package. Therefore, after each release of
-mesh, you should also update the corresponding build recipe in the
+smesh, you should also update the corresponding build recipe in the
 [Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil) repository:
 1) If not yet done, create a fork of the
    [Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil/) repository, which contains all
@@ -61,7 +61,7 @@ mesh, you should also update the corresponding build recipe in the
 4) Create a pull request from your fork's branch to Yggdrasil's `master` branch and name it
    appropriately (e.g., `[smesh] update to version v0.2.4`)
 5) Wait for all tests in Yggdrasil to pass. If they don't, find the error and fix it.
-6) Wait for the Yggdrasil PR to be merged to `master`.. After an appropriate waiting period
+6) Wait for the Yggdrasil PR to be merged to `master`. After an appropriate waiting period
    (1-2 business days), you can ask nicely in the `#binarybuilder` on the Julia Slack if
    someone could merge your PR.
 7) Once the Yggdrasil CI has built the new artifacts from its updated `master` branch, it
