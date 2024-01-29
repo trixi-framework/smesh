@@ -30,7 +30,7 @@ To create a new release for smesh, perform the following steps:
    * Click on "Publish release".
 7) The new release is immediately usable and visible on the release page \o/
 8) To make sure people do not mistake the latest state of `main` as the latest release, we
-   set the version in the `Project.toml` to a *development* version. The development version
+   set the version in the `VERSION` file to a *development* version. The development version
    should be the latest released version, with the patch version incremented by one, and the
    `-dev` suffix added. For example, if you just released `v0.3.0`, the new development
    version should be `v0.3.1-dev`. If you just released `v0.2.4`, the new development
