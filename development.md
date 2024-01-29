@@ -35,3 +35,37 @@ To create a new release for smesh, perform the following steps:
    `-dev` suffix added. For example, if you just released `v0.3.0`, the new development
    version should be `v0.3.1-dev`. If you just released `v0.2.4`, the new development
    version should be `v0.2.5-dev`.
+
+Among other uses, smesh is the backend for the Julia package
+[Smesh.jl](https://github.com/trixi-framework/Smesh.jl). For this purpose, it is
+automatically built and distributed as a Julia JLL package. Therefore, after each release of
+smesh, you should also update the corresponding build recipe in the
+[Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil) repository:
+1) If not yet done, create a fork of the
+   [Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil/) repository, which contains all
+   build recipes for registered JLL packages.
+2) Create a new branch in your Yggdrasil fork and modify the
+   [`build_tarballs.jl`](https://github.com/JuliaPackaging/Yggdrasil/blob/master/S/smesh/build_tarballs.jl)
+   file for smesh:
+   * Change the existing version number in `build_tarballs.jl` to the version you just released (e.g.,
+     [here](https://github.com/JuliaPackaging/Yggdrasil/blob/414237372f5bac40fc3cd8045727def18388a1d7/S/smesh/build_tarballs.jl#L6)
+     the existing smesh version is `v0.1.0`)
+   * Get the commit hash of the current smesh release, e.g., by going to the
+     [latest release](https://github.com/trixi-framework/smesh/releases/latest) and then
+     clicking on the short commit hash, then copying it from the browser URL.
+   * Change the existing commit hash in `build_tarballs.jl` to the commit hash you just
+     obtained (e.g.,
+     [here](https://github.com/JuliaPackaging/Yggdrasil/blob/414237372f5bac40fc3cd8045727def18388a1d7/S/smesh/build_tarballs.jl#L11)
+     the hash was `db69bf884d10c52577aee6795202136cfcf77178`)
+3) Commit and push the changes to your fork.
+4) Create a pull request from your fork's branch to Yggdrasil's `master` branch and name it
+   appropriately (e.g., `[smesh] update to version v0.2.4`)
+5) Wait for all tests in Yggdrasil to pass. If they don't, find the error and fix it.
+6) Wait for the Yggdrasil PR to be merged to `master`. After an appropriate waiting period
+   (1-2 business days), you can ask nicely in the `#binarybuilder` on the Julia Slack if
+   someone could merge your PR.
+7) Once the Yggdrasil CI has built the new artifacts from its updated `master` branch, it
+   will upload them to the
+   [smesh\_jll.jl package repository](https://github.com/JuliaBinaryWrappers/smesh_jll.jl)
+   and create a PR to Julia's general registry with the new version. Once all checks pass
+   there and a grace period of 15 minutes has passed, the new release will be available.
