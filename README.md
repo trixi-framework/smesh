@@ -4,6 +4,7 @@
 [![Coveralls](https://coveralls.io/repos/github/trixi-framework/smesh/badge.svg)](https://coveralls.io/github/trixi-framework/smesh)
 [![Codecov](https://codecov.io/gh/trixi-framework/smesh/branch/main/graph/badge.svg)](https://codecov.io/gh/trixi-framework/smesh)
 [![License: MIT](https://img.shields.io/badge/License-MIT-success.svg)](https://opensource.org/license/mit/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10579422.svg)](https://doi.org/10.5281/zenodo.10579422)
 
 A simple Fortran package for generating and handling unstructured triangular and polygonal
 meshes.
@@ -58,6 +59,19 @@ Flips/triangle:               1.61
 Flips/node:                   3.09
 ```
 and some additional output files `*.dat` in the current directory.
+
+
+## Referencing
+If you use smesh in your own research, please cite this repository as follows:
+```bibtex
+@misc{chiocchetti2024smesh,
+  title={smesh: {A} simple {F}ortran package for generating and handling unstructured triangular and polygonal meshes},
+  author={Chiocchetti, Simone},
+  year={2024},
+  howpublished={\url{https://github.com/trixi-framework/smesh}},
+  doi={10.5281/zenodo.10579422}
+}
+```
 
 
 ## Authors
