@@ -1866,7 +1866,7 @@ CONTAINS
                 DO jj = 1, Nv
                     j = neighbors(jj)
                     IF (j .ne. 0) THEN
-                        ! extract the vertices of the voronoi element j and cyle last vertex to first
+                        ! extract the vertices of the voronoi element j and cycle last vertex to first
                         Nv2 = vor_veb(2,j) - vor_veb(1,j) + 1
                         u(:Nv2) = vor_ve(vor_veb(1,j):vor_veb(2,j))
                         u(Nv2+1) = u(1)
