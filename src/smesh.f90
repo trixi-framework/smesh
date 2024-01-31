@@ -24,6 +24,10 @@ MODULE smesh
     PUBLIC :: build_delaunay_triangulation_c
     PUBLIC :: delaunay_compute_neighbors_c
     !
+    PUBLIC :: polygon_mesh_temparray_size_c
+    PUBLIC :: build_polygon_mesh_c
+    PUBLIC :: voronoi_compute_neighbors_c
+    !
     PUBLIC :: build_delaunay_triangulation
     PUBLIC :: duplicate_cleanup
     PUBLIC :: build_polygon_mesh
@@ -82,8 +86,8 @@ CONTAINS
     FUNCTION delaunay_compute_neighbors_c(ne, ve, nelem, nnode) bind(c)
         ! an interface that merges the dual graph computation and the neighbor computation
         INTEGER(c_int), VALUE, INTENT(IN) :: nelem, nnode
-        INTEGER(c_int), DIMENSION(3,nelem),  INTENT(OUT) :: ne
-        INTEGER(c_int), DIMENSION(3,nelem),  INTENT(IN)  :: ve
+        INTEGER(c_int), DIMENSION(3,nelem), INTENT(OUT) :: ne
+        INTEGER(c_int), DIMENSION(3,nelem), INTENT(IN)  :: ve
         INTEGER, DIMENSION(:),   ALLOCATABLE :: dual
         INTEGER, DIMENSION(:,:), ALLOCATABLE :: dualb
         INTEGER, DIMENSION(:,:), ALLOCATABLE :: ne_internal
@@ -99,29 +103,123 @@ CONTAINS
         delaunay_compute_neighbors_c = 0
     END FUNCTION delaunay_compute_neighbors_c
 
-    ! PURE FUNCTION build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
-    !     ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
-    !     REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
-    !     INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
-    !     INTEGER, DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_veb ! 2, nelem_voronoi==nnode
-    !     REAL(8), DIMENSION(:,:),              INTENT(IN)  :: pt
-    !     INTEGER, DIMENSION(:,:),              INTENT(IN)  :: ve
-    !     INTEGER, OPTIONAL,                    INTENT(IN)  :: mesh_type
-    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
-    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: add_edge_midpoint
-    !     INTEGER, DIMENSION(:),   ALLOCATABLE              :: add_vertex
-    !     INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
-    !     INTEGER, DIMENSION(:,:), ALLOCATABLE              :: dualb
-    !     INTEGER                                           :: nelem, nnode, nnode_voronoi, nelem_voronoi
-    !     INTEGER                                           :: i, j, ii, jj, kk, n, jl, jr, jn
-    !     REAL(8), DIMENSION(2)                             :: p1, p2, p3
-    !     REAL(8), PARAMETER                                :: oot = 1.0d0/3.0d0
-    !     LOGICAL                                           :: inside, add_this_vertex
-    !     INTEGER                                           :: mesh_type_selector
-    !     INTEGER, PARAMETER, DIMENSION(2,3)                :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
+    FUNCTION polygon_mesh_temparray_size_c(array_sizes, ve, pt, mesh_type, orthogonal_boundary_edges, &
+        npt_delaunay, nelem_delaunay, nnode) bind(c)
+        ! same as build_polygon_mesh_c (to be called before it)
+        ! returns an array containing the array sizes for
+        ! 1. vor_pt  :: (2, npt_voronoi)
+        ! 2. vor_ve  :: (nve_voronoi)
+        ! 3. vor_veb :: (2, nelem_voronoi)
+        INTEGER(c_int), VALUE, INTENT(IN) :: npt_delaunay, nelem_delaunay, nnode
+        INTEGER(c_int), DIMENSION(3), INTENT(OUT) :: array_sizes
+        REAL(8), DIMENSION(:,:), ALLOCATABLE :: vor_pt ! npt_voronoi (to be computed)
+        INTEGER, DIMENSION(:),   ALLOCATABLE :: vor_ve ! nve_voronoi (to be computed)
+        INTEGER, DIMENSION(:,:), ALLOCATABLE :: vor_veb ! 2, nelem_voronoi==nnode
+        REAL(c_double), DIMENSION(2,npt_delaunay),              INTENT(IN)  :: pt
+        INTEGER(c_int), DIMENSION(3,nelem_delaunay),              INTENT(IN)  :: ve
+        INTEGER(c_int), VALUE,                        INTENT(IN)  :: mesh_type
+        INTEGER(c_int), VALUE,                        INTENT(IN)  :: orthogonal_boundary_edges
+        REAL(8), DIMENSION(:,:), ALLOCATABLE              :: pt_ref
+        INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
+        INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
+        INTEGER, DIMENSION(:,:), ALLOCATABLE              :: dualb
+        INTEGER(c_int) :: polygon_mesh_temparray_size_c
+        INTEGER :: i
+        REAL(8), DIMENSION(2) :: bbox_center
+        REAL(8) :: bbox_scalelen
+        LOGICAL :: orthogonal_boundary_edges_bool
+        orthogonal_boundary_edges_bool = orthogonal_boundary_edges .ne. 0
+        ! make a temporary array with the point data in a reference space
+        ! (same as the main routine build_polygon_mesh_c)
+        ALLOCATE(pt_ref(size(pt,1), size(pt,2)))
+        do i = 1, size(pt, 2)
+            pt_ref(1:2,i) = pt(1:2,i)
+        end do
+        CALL physical_space_to_reference_space_build_map(bbox_center, bbox_scalelen, pt_ref)
+        CALL physical_space_to_reference_space(pt_ref, bbox_center, bbox_scalelen)
+        ! topology-only operations on the Delaunay grid
+        CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
+        CALL delaunay_compute_neighbors(ne, ve, dual, dualb)
+        ! build the polygons
+        CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt_ref, ve, mesh_type, orthogonal_boundary_edges_bool)
+        array_sizes(1) = size(vor_pt, 2) ! npt_voronoi
+        array_sizes(2) = size(vor_ve)    ! nve_voronoi
+        array_sizes(3) = size(vor_veb,2) ! nelem_voronoi==nnode
+        polygon_mesh_temparray_size_c = 0
+    END FUNCTION polygon_mesh_temparray_size_c
 
-    !     CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
-    ! END FUNCTION build_polygon_mesh_c
+    FUNCTION build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, ve, pt, mesh_type, orthogonal_boundary_edges, &
+        npt_delaunay, nelem_delaunay, npt_voronoi, nve_voronoi, nelem_voronoi) bind(c)
+        ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
+        ! note that this interface features a little bit more hand-holding than 
+        !     the raw build_polygon_mesh fortran routine.
+        !     Here, we also build the duals to the Delaunay grid and include the reference space maps, 
+        !     so that this interface can be called in tandem with polygon_mesh_temparray_size_c
+        INTEGER(c_int), VALUE, INTENT(IN) :: npt_delaunay, nelem_delaunay, npt_voronoi, nve_voronoi, nelem_voronoi
+        REAL(c_double), DIMENSION(2,npt_voronoi), INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
+        INTEGER(c_int), DIMENSION(nve_voronoi), INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
+        INTEGER(c_int), DIMENSION(2,nelem_voronoi), INTENT(OUT) :: vor_veb ! 2, nelem_voronoi==nnode
+        REAL(8), DIMENSION(:,:), ALLOCATABLE :: vor_pt_internal ! npt_voronoi (to be computed)
+        INTEGER, DIMENSION(:),   ALLOCATABLE :: vor_ve_internal ! nve_voronoi (to be computed)
+        INTEGER, DIMENSION(:,:), ALLOCATABLE :: vor_veb_internal ! 2, nelem_voronoi==nnode
+        REAL(c_double), DIMENSION(2,npt_delaunay),              INTENT(IN)  :: pt
+        INTEGER(c_int), DIMENSION(3,nelem_delaunay),              INTENT(IN)  :: ve
+        INTEGER(c_int), VALUE, INTENT(IN) :: mesh_type
+        INTEGER(c_int), VALUE, INTENT(IN) :: orthogonal_boundary_edges
+        REAL(8), DIMENSION(:,:), ALLOCATABLE              :: pt_ref
+        INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
+        INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
+        INTEGER, DIMENSION(:,:), ALLOCATABLE              :: dualb
+        INTEGER :: i, nnode
+        INTEGER(c_int) :: build_polygon_mesh_c
+        LOGICAL :: orthogonal_boundary_edges_bool
+        REAL(8), DIMENSION(2) :: bbox_center
+        REAL(8) :: bbox_scalelen
+        nnode = nelem_voronoi
+        orthogonal_boundary_edges_bool = orthogonal_boundary_edges .ne. 0
+        ! make a temporary array with the point data in a reference space
+        ALLOCATE(pt_ref(size(pt,1), size(pt,2)))
+        do i = 1, size(pt, 2)
+            pt_ref(1:2,i) = pt(1:2,i)
+        end do
+        CALL physical_space_to_reference_space_build_map(bbox_center, bbox_scalelen, pt_ref)
+        CALL physical_space_to_reference_space(pt_ref, bbox_center, bbox_scalelen)
+        ! topology-only operations on the Delaunay grid
+        CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
+        CALL delaunay_compute_neighbors(ne, ve, dual, dualb)
+        ! build the polygons
+        CALL build_polygon_mesh(vor_pt_internal, vor_ve_internal, vor_veb_internal, pt_ref, ve, &
+            mesh_type, orthogonal_boundary_edges_bool)
+        ! map back to physical space
+        CALL reference_space_to_physical_space(vor_pt_internal, bbox_center, bbox_scalelen)
+        ! copy to the explicit size arrays
+        do i = 1, npt_voronoi
+            vor_pt(1:2,i) = vor_pt_internal(1:2,i)
+        end do
+        do i = 1, nve_voronoi
+            vor_ve(i) = vor_ve_internal(i)
+        end do
+        do i = 1, nelem_voronoi
+            vor_veb(1:2,i) = vor_veb_internal(1:2,i)
+        end do
+        build_polygon_mesh_c = 0
+    END FUNCTION build_polygon_mesh_c
+
+    FUNCTION voronoi_compute_neighbors_c(vor_ne, ve, vor_ve, vor_veb, nelem_delaunay, nve_voronoi, nelem_voronoi)
+        INTEGER(c_int), VALUE, INTENT(IN) :: nelem_delaunay, nve_voronoi, nelem_voronoi
+        INTEGER(c_int), DIMENSION(nve_voronoi), INTENT(OUT)  :: vor_ne
+        INTEGER(c_int), DIMENSION(3,nelem_delaunay), INTENT(IN)  :: ve
+        INTEGER(c_int), DIMENSION(nve_voronoi), INTENT(IN) :: vor_ve ! nve_voronoi (to be computed)
+        INTEGER(c_int), DIMENSION(2,nelem_voronoi), INTENT(IN) :: vor_veb ! 2, nelem_voronoi==nnode
+        INTEGER(c_int), DIMENSION(:), ALLOCATABLE  :: vor_ne_internal
+        INTEGER(c_int) :: voronoi_compute_neighbors_c
+        INTEGER :: i
+        CALL voronoi_compute_neighbors(vor_ne_internal, ve, vor_ve, vor_veb)
+        do i = 1, nve_voronoi
+            vor_ne(i) = vor_ne_internal(i)
+        end do
+        voronoi_compute_neighbors_c = 0
+    END FUNCTION voronoi_compute_neighbors_c
 
     ! ---- The delaunay triangulation routine ---------------------------------------------------- !
 
@@ -1429,7 +1527,7 @@ CONTAINS
         projection_on_segment = p2 + (sum(u0*u1)/sum(u1**2))*u1
     END FUNCTION projection_on_segment
 
-    PURE SUBROUTINE build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type)
+    PURE SUBROUTINE build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type, orthogonal_boundary_edges)
         ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
         REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
         INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
@@ -1444,11 +1542,20 @@ CONTAINS
         INTEGER, DIMENSION(:,:), ALLOCATABLE              :: dualb
         INTEGER                                           :: nelem, nnode, nnode_voronoi, nelem_voronoi
         INTEGER                                           :: i, j, ii, jj, kk, n, jl, jr, jn
-        REAL(8), DIMENSION(2)                             :: p1, p2, p3
+        REAL(8), DIMENSION(2)                             :: p1, p2, p3, u
+        REAL(8)                                           :: segment_length, x_proj
         REAL(8), PARAMETER                                :: oot = 1.0d0/3.0d0
         LOGICAL                                           :: inside, add_this_vertex
         INTEGER                                           :: mesh_type_selector
         INTEGER, PARAMETER, DIMENSION(2,3)                :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
+        LOGICAL, INTENT(IN), OPTIONAL :: orthogonal_boundary_edges
+        LOGICAL :: use_strict_orthogonal_boundary_edges
+
+        IF (present(orthogonal_boundary_edges)) then
+            use_strict_orthogonal_boundary_edges = orthogonal_boundary_edges
+        ELSE
+            use_strict_orthogonal_boundary_edges = .false.
+        END IF
 
         nelem = size(ve, 2)
         nnode = size(pt, 2)
@@ -1543,6 +1650,14 @@ CONTAINS
                     vor_pt(:,j) = sum(pt(:,ve(:,j)), dim=2)*oot
                 END IF
             END DO
+        ELSE IF (mesh_type_selector .eq. -1) THEN
+            ! completely standard voronoi, just for experiments, should not be used for computation
+            DO j = 1, nelem
+                p1 = pt(:,ve(1,j))
+                p2 = pt(:,ve(2,j))
+                p3 = pt(:,ve(3,j))
+                vor_pt(:,j) = circumcenter(p1, p2, p3)
+            END DO
         END IF
         DO i = 1, nnode
             DO jj = dualb(1,i), dualb(2,i)
@@ -1559,8 +1674,19 @@ CONTAINS
                     ! instead of the mid point of the boundary edge take 
                     ! the barycenter of the triangle projected along the boundary edge or
                     ! the incenter of the triangle projected along the boundary edge
-                    vor_pt(:,add_edge_midpoint(jj,j)) = projection_on_segment(&
-                        vor_pt(:,j), pt(:,ve(ed(1,jj),j)), pt(:,ve(ed(2,jj),j)))
+                    p1 = pt(:,ve(ed(1,jj),j))
+                    p2 = pt(:,ve(ed(2,jj),j))
+                    p3 = projection_on_segment(vor_pt(:,j), p1, p2)
+                    u = p2 - p1
+                    segment_length = sqrt(sum(u**2))
+                    u = u/segment_length
+                    x_proj = sum((p3-p1)*u)
+                    IF ((x_proj .lt. segment_length .and. x_proj .gt. 0.0d0) &
+                        .or. use_strict_orthogonal_boundary_edges) THEN
+                        vor_pt(:,add_edge_midpoint(jj,j)) = p3
+                    ELSE
+                        vor_pt(:,add_edge_midpoint(jj,j)) = 0.5d0*(p1 + p2)
+                    END IF    
                     ! movable_node(add_edge_midpoint(jj,j)) = .false.
                     ! add edge nodes to the voronoi list
                     DO kk = 1, 2
@@ -1650,5 +1776,124 @@ CONTAINS
             pt(:,i) = pt(:,i)*bbox_scalelen + bbox_center
         END DO
     END SUBROUTINE reference_space_to_physical_space
+
+    ! ---- neighbors for polygon meshes which are dual to a standard (non-degenerater) triangle mesh.
+
+    PURE SUBROUTINE voronoi_compute_neighbors(vor_ne, ve, vor_ve, vor_veb)
+        INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: vor_ne
+        INTEGER, DIMENSION(:,:), INTENT(IN) :: ve
+        INTEGER, DIMENSION(:), INTENT(IN) :: vor_ve
+        INTEGER, DIMENSION(:,:), INTENT(IN) :: vor_veb
+        INTEGER :: i, vor_nelem, j, jj, kk, k, iii, u1, u2, ii, nelem, v1, v2, Nv, Nv2
+        INTEGER :: j2, jjj, kkk, jjjj, kkkk, i1, max_vor_size
+        INTEGER, DIMENSION(2) :: j23
+        INTEGER, DIMENSION(:), ALLOCATABLE :: neighbors
+        INTEGER, DIMENSION(:), ALLOCATABLE :: v, u
+        LOGICAL :: done
+        INTEGER, PARAMETER, DIMENSION(2,3) :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
+        ALLOCATE(vor_ne(size(vor_ve)))
+        ! 1. count the maximum number of sides 
+        max_vor_size = 0
+        do i = 1, size(vor_veb, 2)
+            max_vor_size = max(max_vor_size, vor_veb(2,i) - vor_veb(1,i))
+        end do
+        max_vor_size = max_vor_size + 1
+        ALLOCATE(neighbors(max_vor_size))
+        ALLOCATE(u(max_vor_size+1))
+        ALLOCATE(v(max_vor_size+1))
+        ! 2. find neighbors (unsorted)
+        vor_ne = 0
+        nelem = size(ve, 2)
+        vor_nelem = size(vor_veb, 2)
+        DO i = 1, nelem
+            DO ii = 1, 3
+                j = ve(ii,i) ! get a vertex of the triangle (i.e. a voronoi generator)
+                j23(1) = ve(ed(1,ii),i)
+                j23(2) = ve(ed(2,ii),i)
+                ! thus we must check that the node j2 is nonzero (it might be zero at boundaries, where
+                ! the 'triangle' might have only one or two vertices)
+                DO i1 = 1, 2
+                    j2 = j23(i1)
+                    IF (j2 .ne. 0 .and. j2 .ne. j) THEN 
+                         ! voronoi element j2 is a neighbor of j
+                        DO jj = vor_veb(1,j2), vor_veb(2,j2)
+                            k = vor_ne(jj)
+                            IF (k .eq. j) THEN ! if the element is already present, then exit
+                                EXIT
+                            ELSE IF (k .eq. 0) THEN  ! if an empty slot is found, then register the element and exit
+                                done = .false.
+                                DO jjj = vor_veb(1,j2), vor_veb(2,j2)
+                                    jjjj = vor_ve(jjj)
+                                    ! look for another shared node
+                                    DO kkk = vor_veb(1,j), vor_veb(2,j)
+                                        kkkk = vor_ve(kkk)
+                                        IF (jjjj .eq. kkkk .and. kkkk .ne. i) THEN
+                                            vor_ne(jj) = j
+                                            done = .true.
+                                            EXIT
+                                        END IF
+                                    END DO
+                                    IF (done) THEN
+                                        EXIT
+                                    END IF
+                                END DO
+                                IF (done) THEN
+                                    EXIT
+                                END IF
+                            END IF
+                        END DO
+                    END IF
+                END DO
+            END DO
+        END DO
+        ! 3. now sort the neighbors
+        DO i = 1, vor_nelem           
+            ! for voronoi element i, extract vertices and cycle last vertex to first           
+            Nv = vor_veb(2,i) - vor_veb(1,i) + 1 ! Nv is the number of sides/max neighbors
+            v(:Nv) = vor_ve(vor_veb(1,i):vor_veb(2,i))
+            v(Nv+1) = v(1)
+            ! for voronoi element i, extract unsorted neighbors
+            neighbors(:Nv) = vor_ne(vor_veb(1,i):vor_veb(2,i))
+            ! for each side of voronoi element i, find the corresponding neighbor
+            kk = 0
+            DO ii = vor_veb(1,i), vor_veb(2,i)
+                ! v1 and v2 define a side
+                kk = kk + 1
+                v1 = min(v(kk), v(kk+1))
+                v2 = max(v(kk), v(kk+1))
+                ! go and look in the unsorted neighbors for a voronoi element that shares the same side
+                done = .false.
+                DO jj = 1, Nv
+                    j = neighbors(jj)
+                    IF (j .ne. 0) THEN
+                        ! extract the vertices of the voronoi element j and cycle last vertex to first
+                        Nv2 = vor_veb(2,j) - vor_veb(1,j) + 1
+                        u(:Nv2) = vor_ve(vor_veb(1,j):vor_veb(2,j))
+                        u(Nv2+1) = u(1)
+                        DO iii = 1, Nv2
+                            u1 = min(u(iii), u(iii+1))
+                            u2 = max(u(iii), u(iii+1))
+                            IF (u1 .eq. v1 .and. u2 .eq. v2) THEN
+                                ! found it
+                                vor_ne(ii) = j
+                                done = .true.
+                                EXIT
+                            END IF
+                        END DO
+                        ! if found the neighbor, then exit, do the next sides
+                        IF (done) THEN
+                            EXIT
+                        END IF
+                    ELSE
+                        ! no more neighbors here
+                        EXIT 
+                    END IF
+                END DO
+                IF (.not. done) THEN
+                    vor_ne(ii) = 0
+                END IF
+            END DO
+        END DO
+    END SUBROUTINE voronoi_compute_neighbors
 
 END MODULE smesh
