@@ -24,7 +24,7 @@ PROGRAM smesh_run
     LOGICAL :: using_default_config_file
     INTEGER :: dummyval, npt_voronoi, nve_voronoi, nelem_voronoi, nelem_delaunay, npt_delaunay
     INTEGER, DIMENSION(3) :: array_sizes
-    INTEGER :: orhtogonal_boundary_edges_int
+    INTEGER :: orthogonal_boundary_edges_int
 
     CALL parse_command_line(filename_config, using_default_config_file)
 
@@ -90,14 +90,14 @@ PROGRAM smesh_run
         nelem_delaunay = nelem
         npt_delaunay = nnode
         nelem_voronoi = nnode
-        orhtogonal_boundary_edges_int = 0
+        orthogonal_boundary_edges_int = 0
         ! note that nelem_voronoi, unlike the other array sizes in the argument list,
         !     is an additional integer that is passed also in the subroutines
         !     using assumed shape arrays
         ! npt_delaunay, nelem_delaunay, npt_voronoy, nve_voronoi are just array sizes 
         !     which are not necessary when using the subroutines with assumed shape arrays
         dummyval = polygon_mesh_temparray_size_c(array_sizes, ve, pt, &
-            mesh_type, orhtogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, nelem_voronoi)
+            mesh_type, orthogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, nelem_voronoi)
         npt_voronoi = array_sizes(1)
         nve_voronoi = array_sizes(2)
         nelem_voronoi = array_sizes(3)
@@ -107,7 +107,7 @@ PROGRAM smesh_run
         ALLOCATE(vor_ve(nve_voronoi))
         ALLOCATE(vor_veb(2,nelem_voronoi))
         dummyval = build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, ve, pt, &
-            mesh_type, orhtogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, &
+            mesh_type, orthogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, &
             npt_voronoi, nve_voronoi, nelem_voronoi)
         ALLOCATE(vor_ne(nve_voronoi))
         dummyval = voronoi_compute_neighbors_c(vor_ne, ve, vor_ve, vor_veb, &
