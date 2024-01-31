@@ -103,7 +103,7 @@ CONTAINS
         delaunay_compute_neighbors_c = 0
     END FUNCTION delaunay_compute_neighbors_c
 
-    FUNCTION polygon_mesh_temparray_size_c(array_sizes, ve, pt, mesh_type, orhtogonal_boundary_edges, &
+    FUNCTION polygon_mesh_temparray_size_c(array_sizes, ve, pt, mesh_type, orthogonal_boundary_edges, &
         npt_delaunay, nelem_delaunay, nnode) bind(c)
         ! same as build_polygon_mesh_c (to be called before it)
         ! returns an array containing the array sizes for
@@ -118,7 +118,7 @@ CONTAINS
         REAL(c_double), DIMENSION(2,npt_delaunay),              INTENT(IN)  :: pt
         INTEGER(c_int), DIMENSION(3,nelem_delaunay),              INTENT(IN)  :: ve
         INTEGER(c_int), VALUE,                        INTENT(IN)  :: mesh_type
-        INTEGER(c_int), VALUE,                        INTENT(IN)  :: orhtogonal_boundary_edges
+        INTEGER(c_int), VALUE,                        INTENT(IN)  :: orthogonal_boundary_edges
         REAL(8), DIMENSION(:,:), ALLOCATABLE              :: pt_ref
         INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
         INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
@@ -128,7 +128,7 @@ CONTAINS
         REAL(8), DIMENSION(2) :: bbox_center
         REAL(8) :: bbox_scalelen
         LOGICAL :: orthogonal_boundary_edges_bool
-        orthogonal_boundary_edges_bool = orhtogonal_boundary_edges .ne. 0
+        orthogonal_boundary_edges_bool = orthogonal_boundary_edges .ne. 0
         ! make a temporary array with the point data in a reference space
         ! (same as the main routine build_polygon_mesh_c)
         ALLOCATE(pt_ref(size(pt,1), size(pt,2)))
@@ -148,7 +148,7 @@ CONTAINS
         polygon_mesh_temparray_size_c = 0
     END FUNCTION polygon_mesh_temparray_size_c
 
-    FUNCTION build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, ve, pt, mesh_type, orhtogonal_boundary_edges, &
+    FUNCTION build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, ve, pt, mesh_type, orthogonal_boundary_edges, &
         npt_delaunay, nelem_delaunay, npt_voronoi, nve_voronoi, nelem_voronoi) bind(c)
         ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
         ! note that this interface features a little bit more hand-holding than 
@@ -165,7 +165,7 @@ CONTAINS
         REAL(c_double), DIMENSION(2,npt_delaunay),              INTENT(IN)  :: pt
         INTEGER(c_int), DIMENSION(3,nelem_delaunay),              INTENT(IN)  :: ve
         INTEGER(c_int), VALUE, INTENT(IN) :: mesh_type
-        INTEGER(c_int), VALUE, INTENT(IN) :: orhtogonal_boundary_edges
+        INTEGER(c_int), VALUE, INTENT(IN) :: orthogonal_boundary_edges
         REAL(8), DIMENSION(:,:), ALLOCATABLE              :: pt_ref
         INTEGER, DIMENSION(:,:), ALLOCATABLE              :: ne
         INTEGER, DIMENSION(:),   ALLOCATABLE              :: dual
@@ -176,7 +176,7 @@ CONTAINS
         REAL(8), DIMENSION(2) :: bbox_center
         REAL(8) :: bbox_scalelen
         nnode = nelem_voronoi
-        orthogonal_boundary_edges_bool = orhtogonal_boundary_edges .ne. 0
+        orthogonal_boundary_edges_bool = orthogonal_boundary_edges .ne. 0
         ! make a temporary array with the point data in a reference space
         ALLOCATE(pt_ref(size(pt,1), size(pt,2)))
         do i = 1, size(pt, 2)
@@ -1527,7 +1527,7 @@ CONTAINS
         projection_on_segment = p2 + (sum(u0*u1)/sum(u1**2))*u1
     END FUNCTION projection_on_segment
 
-    PURE SUBROUTINE build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type, orhtogonal_boundary_edges)
+    PURE SUBROUTINE build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type, orthogonal_boundary_edges)
         ! mesh_type: 0-> voronoi if fully acute triangulation, 1-> centroid based polygons, 2-> funky incenter based polygons
         REAL(8), DIMENSION(:,:), ALLOCATABLE, INTENT(OUT) :: vor_pt ! npt_voronoi (to be computed)
         INTEGER, DIMENSION(:),   ALLOCATABLE, INTENT(OUT) :: vor_ve ! nve_voronoi (to be computed)
@@ -1548,13 +1548,13 @@ CONTAINS
         LOGICAL                                           :: inside, add_this_vertex
         INTEGER                                           :: mesh_type_selector
         INTEGER, PARAMETER, DIMENSION(2,3)                :: ed = reshape([2,3,3,1,1,2], [2,3]) ! mod(i+j, 3)
-        LOGICAL, INTENT(IN), OPTIONAL :: orhtogonal_boundary_edges
-        LOGICAL :: use_strict_orhtogonal_boundary_edges
+        LOGICAL, INTENT(IN), OPTIONAL :: orthogonal_boundary_edges
+        LOGICAL :: use_strict_orthogonal_boundary_edges
 
-        IF (present(orhtogonal_boundary_edges)) then
-            use_strict_orhtogonal_boundary_edges = orhtogonal_boundary_edges
+        IF (present(orthogonal_boundary_edges)) then
+            use_strict_orthogonal_boundary_edges = orthogonal_boundary_edges
         ELSE
-            use_strict_orhtogonal_boundary_edges = .false.
+            use_strict_orthogonal_boundary_edges = .false.
         END IF
 
         nelem = size(ve, 2)
@@ -1682,7 +1682,7 @@ CONTAINS
                     u = u/segment_length
                     x_proj = sum((p3-p1)*u)
                     IF ((x_proj .lt. segment_length .and. x_proj .gt. 0.0d0) &
-                        .or. use_strict_orhtogonal_boundary_edges) THEN
+                        .or. use_strict_orthogonal_boundary_edges) THEN
                         vor_pt(:,add_edge_midpoint(jj,j)) = p3
                     ELSE
                         vor_pt(:,add_edge_midpoint(jj,j)) = 0.5d0*(p1 + p2)
