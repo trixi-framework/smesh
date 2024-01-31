@@ -8,7 +8,7 @@ PROGRAM smesh_run
     INTEGER                              :: problem_type
     CHARACTER(len=200)                   :: filename_points
     REAL(8)                              :: xmin, xmax, ymin, ymax, dphi, drho_k, drho_m
-    INTEGER                              :: nx, ny, nnode, nelem, n, voronoi_mesh_type
+    INTEGER                              :: nx, ny, nnode, nelem, n, mesh_type
     LOGICAL                              :: shuffle
     REAL(8), DIMENSION(:,:), ALLOCATABLE :: pt
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: ve
@@ -19,8 +19,12 @@ PROGRAM smesh_run
     REAL(8), DIMENSION(:,:), ALLOCATABLE :: vor_pt
     INTEGER, DIMENSION(:),   ALLOCATABLE :: vor_ve
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: vor_veb
+    INTEGER, DIMENSION(:),   ALLOCATABLE :: vor_ne
     CHARACTER(len=200) :: filename_config, output_path
     LOGICAL :: using_default_config_file
+    INTEGER :: dummyval, npt_voronoi, nve_voronoi, nelem_voronoi, nelem_delaunay, npt_delaunay
+    INTEGER, DIMENSION(3) :: array_sizes
+    INTEGER :: orhtogonal_boundary_edges_int
 
     CALL parse_command_line(filename_config, using_default_config_file)
 
@@ -34,7 +38,7 @@ PROGRAM smesh_run
     READ(21,*) ! mesh
     READ(21,*) shuffle
     READ(21,*) ! voronoi
-    READ(21,*) voronoi_mesh_type
+    READ(21,*) mesh_type
     READ(21,*) ! simple grid settings
     READ(21,*) xmin
     READ(21,*) xmax
@@ -73,12 +77,42 @@ PROGRAM smesh_run
     nelem = size(ve,2)
     ! get the number of nodes
     nnode = size(pt,2)
-    ! Compute memory distance between elements
     CALL delaunay_compute_dual_grid(dual, dualb, ve, nnode)
     CALL delaunay_compute_neighbors(ne, ve, dual, dualb)
     CALL compute_unique_edges(edge, ve, ne)
+
     ! Compute voronoi control volumes
-    CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type=voronoi_mesh_type)
+    if (.false.) then
+        ! the subroutine using assumed shape arrays, without the reference space maps
+        CALL build_polygon_mesh(vor_pt, vor_ve, vor_veb, pt, ve, mesh_type=mesh_type)
+    else
+        ! the subroutines using c interfaces and explicit size arrays
+        nelem_delaunay = nelem
+        npt_delaunay = nnode
+        nelem_voronoi = nnode
+        orhtogonal_boundary_edges_int = 0
+        ! note that nelem_voronoi, unlike the other array sizes in the argument list,
+        !     is an additional integer that is passed also in the subroutines
+        !     using assumed shape arrays
+        ! npt_delaunay, nelem_delaunay, npt_voronoy, nve_voronoi are just array sizes 
+        !     which are not necessary when using the subroutines with assumed shape arrays
+        dummyval = polygon_mesh_temparray_size_c(array_sizes, ve, pt, &
+            mesh_type, orhtogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, nelem_voronoi)
+        npt_voronoi = array_sizes(1)
+        nve_voronoi = array_sizes(2)
+        nelem_voronoi = array_sizes(3)
+        ! note that here nelem_voronoi is passed as nnode==nelem_voronoi, and not 
+        !    passed twice since it is also used to specify the size of the array vor_veb
+        ALLOCATE(vor_pt(2,npt_voronoi))
+        ALLOCATE(vor_ve(nve_voronoi))
+        ALLOCATE(vor_veb(2,nelem_voronoi))
+        dummyval = build_polygon_mesh_c(vor_pt, vor_ve, vor_veb, ve, pt, &
+            mesh_type, orhtogonal_boundary_edges_int, npt_delaunay, nelem_delaunay, &
+            npt_voronoi, nve_voronoi, nelem_voronoi)
+        ALLOCATE(vor_ne(nve_voronoi))
+        dummyval = voronoi_compute_neighbors_c(vor_ne, ve, vor_ve, vor_veb, &
+            nelem_delaunay, nve_voronoi, nelem_voronoi)
+    end if
     CALL prt_bin(pt,      trim(output_path)//"/dt_pt.dat")
     CALL prt_bin(ve,      trim(output_path)//"/dt_ve.dat")
     CALL prt_bin(edge,    trim(output_path)//"/dt_edge.dat")
