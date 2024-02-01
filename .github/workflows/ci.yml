@@ -98,7 +98,7 @@ jobs:
           files: ./build-coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
-        end:
+        env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Coveralls
         if: ${{ matrix.test_type == 'coverage' }}
