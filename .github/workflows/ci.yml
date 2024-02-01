@@ -92,12 +92,14 @@ jobs:
           build-coverage/smesh_run smesh_example.cfg
           build-coverage/smesh_run smesh_test.cfg
           cmake --build build-coverage/ --target process-coverage
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         if: ${{ matrix.test_type == 'coverage' }}
         with:
           files: ./build-coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Coveralls
         if: ${{ matrix.test_type == 'coverage' }}
         uses: coverallsapp/github-action@master
