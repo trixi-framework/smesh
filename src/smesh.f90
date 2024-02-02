@@ -205,7 +205,7 @@ CONTAINS
         build_polygon_mesh_c = 0
     END FUNCTION build_polygon_mesh_c
 
-    FUNCTION voronoi_compute_neighbors_c(vor_ne, ve, vor_ve, vor_veb, nelem_delaunay, nve_voronoi, nelem_voronoi)
+    FUNCTION voronoi_compute_neighbors_c(vor_ne, ve, vor_ve, vor_veb, nelem_delaunay, nve_voronoi, nelem_voronoi) bind(c)
         INTEGER(c_int), VALUE, INTENT(IN) :: nelem_delaunay, nve_voronoi, nelem_voronoi
         INTEGER(c_int), DIMENSION(nve_voronoi), INTENT(OUT)  :: vor_ne
         INTEGER(c_int), DIMENSION(3,nelem_delaunay), INTENT(IN)  :: ve
